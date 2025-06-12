@@ -9,47 +9,67 @@ const router = express.Router();
 
 //  Register Route
 router.post("/register", async (req, res) => {
-    try {
-        console.log("Received signup request:", req.body); // Add this
-    
-        const {
-          name,
-          email,
-          password,
-          role,
-          institution,
-          graduationYear,
-          profession,
-          specialization,
-          bio
-        } = req.body;
+  try {
+    console.log("Received signup request:", req.body);
 
-        const normalizedEmail=email.trim().toLowerCase();
-    
-      const existingUser = await User.findOne({ email });
-      if (existingUser) return res.status(400).json({ message: "User already exists" });
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      const user = new User({
-        name,
-        email,
-        password: hashedPassword,
-        role,
-        institution,
-        graduationYear,
-        profession,
-        specialization,
-        bio
-      });
-  
-      await user.save();
-  
-      res.status(201).json({ message: "User Registered Successfully!" });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+    const {
+      name,
+      email,
+      password,
+      role,
+      institution,
+      graduationYear,
+      profession,
+      specialization,
+      bio
+    } = req.body;
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser)
+      return res.status(400).json({ message: "User already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      name,
+      email: normalizedEmail,
+      password: hashedPassword,
+      role,
+      institution,
+      graduationYear,
+      profession,
+      specialization,
+      bio
+    });
+
+    await user.save();
+
+    // Generate token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Return user and token like login
+    res.status(201).json({
+      message: "User Registered Successfully!",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        institution: user.institution
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
   
 
 //  Login Route
